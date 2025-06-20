@@ -1,4 +1,4 @@
-import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey, weatherKeyById, restaurantDetailsKeyById } from './../utils/keys';
+import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey, weatherKeyById, restaurantDetailsKeyById, indexKey, bloomKey } from './../utils/keys';
 import express, { type Request, type Response, type NextFunction } from "express";
 import { validate } from "../middlewares/validate";
 import { RestaurantSchema, Restaurant, RestaurantDetailsSchema, type RestaurantDetails } from "../schemas/restaurant";
@@ -43,10 +43,10 @@ router.post("/", validate(RestaurantSchema), async (req, res, next) => {
         const id = nanoid();
         const restaurantKey = restaurantKeyById(id);
         const bloomString = `${data.name}:${data.location}`;
-        // const seenBefore = await client.bf.exists(bloomKey, bloomString);
-        // if (seenBefore) {
-        // return errorResponse(res, 409, "Restaurant already exists");
-        // }
+        const seenBefore = await client.bf.exists(bloomKey, bloomString);
+        if (seenBefore) {
+        return errorResponse(res, 409, "Restaurant already exists");
+        }
         const hashData = { id, name: data.name, location: data.location };
         await Promise.all([
         ...data.cuisines.map((cuisine) =>
@@ -61,7 +61,7 @@ router.post("/", validate(RestaurantSchema), async (req, res, next) => {
             score: 0,
             value: id,
         }),
-        // client.bf.add(bloomKey, bloomString),
+        client.bf.add(bloomKey, bloomString),
         ]);
         return successRes(res, hashData, "Added new restaurant");
     } catch (error) {
@@ -89,6 +89,18 @@ router.post('/:restaurantId/details', checkRestaurant, validate(RestaurantDetail
         console.log('error', error);
     }
 })
+
+
+router.get("/search", async (req, res, next) => {
+    const { q } = req.query;
+    try {
+        const client = await initializeRedisClient();
+        const results = await client.ft.search(indexKey, `@name:${q}`);
+        return successRes(res, results);
+    } catch (error) {
+        next(error);
+    }
+});
 
 
 router.get('/:restaurantId/details', checkRestaurant, async (req: Request, res: Response, next: NextFunction) => {
