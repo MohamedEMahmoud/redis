@@ -13,7 +13,7 @@ export async function initializeRedisClient() {
             console.log('Redis Connected');
         });
 
-        await client.connect();
+        client =  await client.connect();
     }
     return client;
 }

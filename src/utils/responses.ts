@@ -2,7 +2,7 @@ import { type Request, type Response } from "express";
 
 
 export function successRes(res: Response, data: Object, message: string = "Success") {
-    return res.status(200).json(data);
+    return res.status(200).json({success: true,  message, data});
 }
 
 
