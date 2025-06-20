@@ -1,4 +1,4 @@
-import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey } from './../utils/keys';
+import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey, weatherKeyById } from './../utils/keys';
 import express, { type Request, type Response, type NextFunction } from "express";
 import { validate } from "../middlewares/validate";
 import { RestaurantSchema, Restaurant } from "../schemas/restaurant";
@@ -69,6 +69,53 @@ router.post("/", validate(RestaurantSchema), async (req, res, next) => {
     }
 });
 
+router.get('/:restaurantId/weather', checkRestaurant, async (req: Request, res: Response) => {
+
+    try{
+
+        const {restaurantId} = req.params;
+
+        const client = await initializeRedisClient();
+
+        const weatherKey = weatherKeyById(restaurantId as string);
+
+        const cachedWeather = await client.get(weatherKey);
+
+        if(cachedWeather) {
+            console.log('Cache Hit')
+            return successRes(res, JSON.parse(cachedWeather));
+        }
+        const restaurantKey = restaurantKeyById(restaurantId as string);
+
+        const coords = await client.hGet(restaurantKey, "location");
+
+        if(!coords) {
+            return errorRes(res, 404, 'coordinates have not been found');
+        }
+
+
+        const [lng, lat] = coords.split(',');
+
+        const apiResponse = await fetch(`https://api.openweathermap.org/data/2.5/weather?units=imperial&lat=${lat}&lon=${lng}&appid=${process.env.WEATHER_API_KEY}`);
+
+        if(Number(apiResponse.status) !== 200){
+
+            return errorRes(res, 500, `Couldn't fetch weather info`);
+
+        }
+
+        const json = await apiResponse.json();
+
+        await client.set(weatherKey, JSON.stringify(json), {
+            EX: 60 * 60,
+        });
+
+        return successRes(res, json);
+
+    } catch(error){
+        console.log('error', error)
+    }
+})
 
 router.get('/:restaurantId', checkRestaurant,  async (req: Request, res: Response, next: NextFunction) => {
 
