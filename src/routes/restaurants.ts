@@ -1,7 +1,7 @@
-import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey, weatherKeyById } from './../utils/keys';
+import { cuisinesKey, restaurantCuisinesKeyById, restaurantKeyById, reviewDetailsKeyById, reviewKeyById, cuisineKey, restaurantsByRatingKey, weatherKeyById, restaurantDetailsKeyById } from './../utils/keys';
 import express, { type Request, type Response, type NextFunction } from "express";
 import { validate } from "../middlewares/validate";
-import { RestaurantSchema, Restaurant } from "../schemas/restaurant";
+import { RestaurantSchema, Restaurant, RestaurantDetailsSchema, type RestaurantDetails } from "../schemas/restaurant";
 import { initializeRedisClient } from "../utils/client";
 import { nanoid } from "../../node_modules/nanoid/index";
 import { errorRes, successRes } from '../utils/responses';
@@ -68,6 +68,49 @@ router.post("/", validate(RestaurantSchema), async (req, res, next) => {
         next(error);
     }
 });
+
+router.post('/:restaurantId/details', checkRestaurant, validate(RestaurantDetailsSchema), async (req: Request, res: Response, next: NextFunction) => {
+
+    const {restaurantId} = req.params;
+
+    const data = req.body as RestaurantDetails;
+
+    try{
+
+        const client = await initializeRedisClient();
+
+        const restaurantDetailsKey = restaurantDetailsKeyById(restaurantId as string);
+
+        await client.json.set(restaurantDetailsKey, '$', data);
+
+        return successRes(res, {}, 'Restaurant details added');
+
+    } catch(error){
+        console.log('error', error);
+    }
+})
+
+
+router.get('/:restaurantId/details', checkRestaurant, async (req: Request, res: Response, next: NextFunction) => {
+
+    const {restaurantId} = req.params;
+
+    const data = req.body as RestaurantDetails;
+
+    try{
+
+        const client = await initializeRedisClient();
+
+        const restaurantDetailsKey = restaurantDetailsKeyById(restaurantId as string);
+
+        const details =  await client.json.get(restaurantDetailsKey);
+
+        return successRes(res, details, 'Restaurant details added');
+
+    } catch(error){
+        console.log('error', error);
+    }
+})
 
 router.get('/:restaurantId/weather', checkRestaurant, async (req: Request, res: Response) => {
 

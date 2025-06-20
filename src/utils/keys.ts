@@ -17,3 +17,5 @@ export const restaurantCuisinesKeyById = (id: string) => getKeyName('restaurants
 export const restaurantsByRatingKey = getKeyName('restaurants:rating');
 
 export const weatherKeyById = (id: string) => getKeyName('weather', id);
+
+export const restaurantDetailsKeyById = (id: string) => getKeyName('restaurants:details', id);
